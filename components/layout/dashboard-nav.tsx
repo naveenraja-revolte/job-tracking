@@ -1,0 +1,131 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
+import { IntentLink, LinkPendingIcon } from '@/components/layout/intent-link';
+import { NavShell } from '@/components/layout/nav-shell';
+import { SiteLogo } from '@/components/layout/site-logo';
+import ThemeToggle from '@/components/ThemeToggle';
+import UserProfileDropdown from '@/components/UserProfileDropdown';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { AlignLeft, BarChart2, Compass, LayoutDashboard, User, Clock, Users2 } from 'lucide-react';
+import { NotificationBell } from '@/components/layout/notification-bell';
+import { cn } from '@/lib/utils';
+
+/** Dashboard nav links — logo links here, active state tracked by pathname */
+const NAV_LINKS = [
+  {
+    href: '/dashboard',
+    label: 'Dashboard',
+    icon: <LayoutDashboard className="h-4 w-4" />,
+  },
+  {
+    href: '/stats',
+    label: 'Stats',
+    icon: <BarChart2 className="h-4 w-4" />,
+  },
+  {
+    href: '/discover',
+    label: 'Discover',
+    icon: <Compass className="h-4 w-4" />,
+  },
+  {
+    href: '/timeline',
+    label: 'Timeline',
+    icon: <Clock className="h-4 w-4" />,
+  },
+  {
+    href: '/team',
+    label: 'Team',
+    icon: <Users2 className="h-4 w-4" />,
+  },
+  {
+    href: '/profile',
+    label: 'Profile',
+    icon: <User className="h-4 w-4" />,
+  },
+] as const;
+
+/**
+ * Full dashboard top navbar — replaces legacy Navbar + Sidebar.
+ * Logo left (links /dashboard) | nav pill links center (md+) | ThemeToggle + avatar right.
+ * Mobile: hamburger dropdown for nav links.
+ */
+export function DashboardNav() {
+  const pathname = usePathname();
+
+  return (
+    <NavShell width="app">
+      {/* Left — logo linked to /dashboard */}
+      <IntentLink
+        href="/dashboard"
+        className="flex h-full shrink-0 items-center rounded-lg transition hover:opacity-90"
+        aria-label="Go to dashboard"
+      >
+        <SiteLogo priority linked={false} />
+      </IntentLink>
+
+      {/* Center — pill nav links, visible md+ */}
+      <nav
+        className="hidden h-full items-center gap-0.5 md:flex"
+        aria-label="Dashboard navigation"
+      >
+        {NAV_LINKS.map((link) => {
+          const isActive =
+            link.href === '/dashboard'
+              ? pathname === '/dashboard' || pathname.startsWith('/dashboard/')
+              : pathname === link.href;
+
+          return (
+            <IntentLink
+              key={link.href}
+              href={link.href}
+              className={cn(
+                'flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition',
+                isActive
+                  ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
+                  : 'text-foreground/75 hover:bg-glass-hover hover:text-foreground'
+              )}
+            >
+              <LinkPendingIcon icon={link.icon} />
+              {link.label}
+            </IntentLink>
+          );
+        })}
+      </nav>
+
+      {/* Right — mobile hamburger + ThemeToggle + avatar */}
+      <div className="flex items-center gap-2">
+        {/* Mobile nav — hamburger dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" className="md:hidden">
+              <AlignLeft className="h-4 w-4" />
+              <span className="sr-only">Toggle navigation</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" sideOffset={10} className="w-44">
+            {NAV_LINKS.map((link) => (
+              <DropdownMenuItem key={link.href} asChild>
+                <IntentLink href={link.href} className="flex items-center gap-2">
+                  <LinkPendingIcon icon={link.icon} />
+                  {link.label}
+                </IntentLink>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <NotificationBell />
+        <ThemeToggle />
+        {/* Avatar — single ring + glow in UserProfileDropdown */}
+        <UserProfileDropdown />
+      </div>
+    </NavShell>
+  );
+}

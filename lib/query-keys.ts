@@ -1,0 +1,75 @@
+/** Canonical React Query keys — prefix invalidation uses jobs root key */
+
+export const queryKeys = {
+  jobs: {
+    all: ['jobs'] as const,
+    list: (
+      search: string,
+      jobStatus: string,
+      jobMode: string,
+      monthYear: string,
+      page: number
+    ) => ['jobs', search, jobStatus, jobMode, monthYear, page] as const,
+    filterOptions: ['jobs', 'filter-options'] as const,
+  },
+  stats: {
+    all: ['stats'] as const,
+  },
+  charts: {
+    all: ['charts'] as const,
+  },
+  job: {
+    detail: (id: string) => ['job', id] as const,
+  },
+  // Weekly application velocity — last 12 weeks.
+  // Invalidated via chartsTag (same tag as monthly charts).
+  chartsWeekly: {
+    all: ['charts-weekly'] as const,
+  },
+  // Discover page — job postings catalog search.
+  // NOT persisted to localStorage (catalog may change between sessions).
+  discover: {
+    all: ['discover'] as const,
+    search: (
+      q: string,
+      country: string,
+      workplaceType: string,
+      employmentType: string,
+      salaryExists: boolean
+    ) =>
+      ['discover', 'search', q, country, workplaceType, employmentType, salaryExists] as const,
+    // Full posting detail — fetched on demand when user opens View Details modal
+    detail: (postingId: string) => ['discover', 'detail', postingId] as const,
+    // Posting lifecycle events — fetched on demand in Posting Activity tab
+    events: (postingId: string) => ['discover', 'events', postingId] as const,
+    // Filter facet counts — staleTime 5 min, not persisted
+    facets: (q: string, country: string) => ['discover', 'facets', q, country] as const,
+  },
+  // AI pipeline — per-job insights (fit score, cover letter, interview angles).
+  // NOT persisted: LLM output changes each run; user regenerates on demand.
+  ai: {
+    pipeline: (jobId: string) => ['ai', 'pipeline', jobId] as const,
+  },
+  // Persisted AI insights — loaded from DB, staleTime Infinity, NOT in localStorage persist scope.
+  aiInsight: {
+    job: (jobId: string) => ['ai', 'insight', jobId] as const,
+  },
+  // User profile for AI personalisation — loaded from DB, not persisted to localStorage.
+  userProfile: () => ['user-profile'] as const,
+  // Global activity timeline — built from Job rows, not persisted.
+  timeline: () => ['timeline'] as const,
+  // Skill gap analysis — per-job comparison of user profile skills vs job description.
+  // NOT persisted: on-demand, depends on the linked posting description.
+  skillGap: (jobId: string) => ['skill-gap', jobId] as const,
+  // Salary intelligence — aggregated from user's enriched jobs.
+  // NOT persisted in localStorage; invalidated on job CRUD via invalidateAllJobQueries.
+  salaryIntel: () => ['salary-intel'] as const,
+  // LLM-powered skill gap — per-job, NOT persisted. Lazy-fetched from SkillGapTab AI toggle.
+  skillGapAI: (jobId: string) => ['skill-gap-ai', jobId] as const,
+  // Team mode — user's current team + members + team jobs. NOT persisted.
+  team: {
+    current: () => ['team', 'current'] as const,
+    members: (teamId: string) => ['team', 'members', teamId] as const,
+    jobs: (teamId: string) => ['team', 'jobs', teamId] as const,
+  },
+} as const;

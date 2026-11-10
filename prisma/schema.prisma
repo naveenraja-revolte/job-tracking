@@ -1,0 +1,271 @@
+// Jobify Prisma schema
+// NextAuth v5 tables added; clerkId renamed to userId throughout.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── NextAuth v5 / Auth.js required models ────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  /// Bcrypt hash — null for OAuth-only accounts
+  password      String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  accounts        Account[]
+  sessions        Session[]
+  jobs            Job[]
+  aiInsights      JobAIInsight[]
+  profile         UserProfile?
+  // Team mode — user may own teams and be a member of teams
+  ownedTeams      Team[]       @relation("TeamOwner")
+  teamMemberships TeamMember[]
+
+  @@map("users")
+}
+
+model Account {
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Application models ───────────────────────────────────────────────────────
+
+/// Job application record — scoped per user via userId (NextAuth User.id)
+model Job {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  position  String
+  company   String
+  location  String
+  status    String // pending | interview | declined
+  mode      String // full-time | part-time | internship
+
+  // URL user applied through — matched against JobPosting.applyUrl when linking
+  applyUrl  String? @map("apply_url")
+
+  // Linked posting from our own catalog — null when no match; posting deletion keeps the job
+  postingId String? @map("posting_id")
+
+  // Snapshot of the linked posting at last sync — diffed by resyncJob to detect changes
+  postingStatus   String?   @map("posting_status")    // open | closed
+  workplaceType   String?   @map("workplace_type")    // remote | hybrid | on_site
+  salaryMin       Int?      @map("salary_min")
+  salaryMax       Int?      @map("salary_max")
+  salaryCurrency  String?   @map("salary_currency")
+  postingDescHash String?   @map("posting_desc_hash") // posting.contentHash at last sync
+  postingSyncedAt DateTime? @map("posting_synced_at")
+  postingChangedAt DateTime? @map("posting_changed_at") // when a change was last detected
+  postingChangeType String?  @map("posting_change_type") // posting_closed | jd_changed | salary_added
+
+  // Company data copied from the linked posting's Company
+  companySize      String? @map("company_size")      // e.g. "51-200", "1001-5000"
+  companyIndustry  String? @map("company_industry")  // e.g. "Software Development"
+  companyHq        String? @map("company_hq")        // e.g. "San Francisco, CA"
+
+  // Team — null for personal jobs; set for team-shared jobs
+  teamId    String? @map("team_id")
+
+  aiInsight    JobAIInsight?
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team         Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  posting      JobPosting?   @relation(fields: [postingId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, postingId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([postingId])
+  @@index([teamId])
+}
+
+// ─── Job postings catalog (Discover) ──────────────────────────────────────────
+
+/// Hiring company behind one or more postings.
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  domain    String?                              // e.g. "stripe.com" — used for the logo favicon
+  size      String?                              // e.g. "51-200"
+  industry  String?
+  hq        String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  postings JobPosting[]
+
+  @@map("companies")
+}
+
+/// Public job posting listed on /discover and linked to tracked jobs.
+model JobPosting {
+  id             String    @id @default(cuid())
+  companyId      String    @map("company_id")
+  title          String
+  department     String?
+  description    String    @db.Text
+  locationText   String    @map("location_text")
+  city           String?
+  region         String?
+  country        String
+  workplaceType  String    @map("workplace_type")   // remote | hybrid | on_site
+  employmentType String    @map("employment_type")  // full_time | part_time | contract | temporary | internship
+  salaryMin      Int?      @map("salary_min")
+  salaryMax      Int?      @map("salary_max")
+  salaryCurrency String?   @map("salary_currency")
+  salaryPeriod   String?   @map("salary_period")    // year | hour
+  applyUrl       String    @unique @map("apply_url")
+  status         String    @default("open")         // open | closed
+  contentHash    String    @map("content_hash")     // SHA-256 of description — detects JD edits
+  postedAt       DateTime  @default(now()) @map("posted_at")
+  closedAt       DateTime? @map("closed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  events      JobPostingEvent[]
+  trackedJobs Job[]
+
+  @@index([status, postedAt(sort: Desc), id])
+  @@index([country, status])
+  @@index([workplaceType])
+  @@index([employmentType])
+  @@index([companyId])
+  @@map("job_postings")
+}
+
+/// Lifecycle history of a posting — shown in the job "Activity" tab.
+model JobPostingEvent {
+  id         String   @id @default(cuid())
+  postingId  String   @map("posting_id")
+  type       String                                // created | updated | closed | reopened
+  fieldName  String?  @map("field_name")           // salary | description | title | workplace_type
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  observedAt DateTime @default(now()) @map("observed_at")
+
+  posting JobPosting @relation(fields: [postingId], references: [id], onDelete: Cascade)
+
+  @@index([postingId, observedAt(sort: Desc)])
+  @@map("job_posting_events")
+}
+
+/// AI pipeline insight — persisted after the first pipeline run to avoid redundant LLM calls.
+/// One-to-one with Job; regenerated on explicit user request.
+model JobAIInsight {
+  id              String   @id @default(cuid())
+  jobId           String   @unique
+  userId          String   @map("user_id")
+  fitScore        Int?                          // 0–100 fit score from AI
+  fitLabel        String?                       // strong_fit | good_fit | partial_fit | poor_fit
+  summary         String?                       // 2-3 sentence fit summary
+  coverLetter     String?                       // generated cover letter draft
+  interviewAngles String[] @default([])         // key talking points / angles for interviews
+  redFlags        String[] @default([])         // potential concerns flagged by AI
+  generatedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Optional user profile — used to personalise AI pipeline with skills + target roles.
+/// Created lazily when user saves preferences.
+model UserProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique @map("user_id")
+  skills          String[] @default([])
+  targetRoles     String[] @default([])
+  experienceLevel String?                       // entry | mid | senior | staff | principal
+  resumeText      String?                       // plain-text resume pasted by user
+  // P4: Browser extension auth token — generated from /profile page
+  extensionToken  String?  @unique @map("extension_token")
+  // P6: Unique inbound email for auto-apply detection via Resend webhook
+  inboundEmailAddress String? @unique @map("inbound_email_address")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── P5: Team Mode ─────────────────────────────────────────────────────────────
+
+/// Shared team for collaborative job tracking. Jobs can be scoped to a team.
+model Team {
+  id        String       @id @default(cuid())
+  name      String
+  ownerId   String       @map("owner_id")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  owner   User         @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members TeamMember[]
+  jobs    Job[]
+
+  @@index([ownerId])
+  @@map("teams")
+}
+
+/// Team membership with RBAC role (owner | admin | member).
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String   @map("team_id")
+  userId   String   @map("user_id")
+  role     String   @default("member")          // owner | admin | member
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}

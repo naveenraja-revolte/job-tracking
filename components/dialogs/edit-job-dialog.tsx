@@ -1,0 +1,130 @@
+'use client';
+
+import { useState } from 'react';
+import { Pencil } from 'lucide-react';
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { GlassDialogContent } from '@/components/ui/glass-dialog-content';
+import { GlassCard } from '@/components/ui/glass-card';
+import { GlassAlertDialog } from '@/components/ui/glass-alert-dialog';
+import { Button } from '@/components/ui/button';
+import EditJobForm from '@/components/EditJobForm';
+import type { JobType } from '@/utils/types';
+import { JOB_DIALOG_PANEL_CLASS } from '@/lib/ui/job-dialog-dimensions';
+
+type EditJobDialogProps = {
+  /** Full JobType (JobCard) seeds the form instantly; the id-only shape waits for the detail query */
+  job: JobType | Pick<JobType, 'id' | 'position' | 'company'>;
+  /** When true, form body shows loading shell (SSR/hydration cold load) */
+  formLoading?: boolean;
+  /**
+   * When true, renders an Edit trigger button.
+   * When false, use defaultOpen={true} for URL-based access (e.g. /dashboard/[id]).
+   */
+  showTrigger?: boolean;
+  /**
+   * Pre-opens the dialog — used when navigating directly to /dashboard/[id].
+   * Pair with onExternalClose to navigate away when dialog closes.
+   */
+  defaultOpen?: boolean;
+  /**
+   * Called when dialog closes in defaultOpen mode.
+   * Typically used to navigate back to /dashboard.
+   */
+  onExternalClose?: () => void;
+  /**
+   * Optional AI panel rendered below the edit form inside the dialog.
+   * Used by EditJobDialogPage (/dashboard/[id]) to show AiInsightsPanel.
+   * Not rendered on JobCard quick-edit (no full job data available there).
+   */
+  aiPanel?: React.ReactNode;
+};
+
+/**
+ * Glassmorphic Edit Job dialog.
+ * Two usage modes:
+ *  1. showTrigger=true (JobCard): confirm alert → Edit dialog.
+ *  2. defaultOpen=true (URL /dashboard/[id]): opens immediately; onExternalClose navigates back.
+ */
+export function EditJobDialog({
+  job,
+  formLoading = false,
+  showTrigger = false,
+  defaultOpen = false,
+  onExternalClose,
+  aiPanel,
+}: EditJobDialogProps) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next && !showTrigger) {
+      onExternalClose?.();
+    }
+  };
+
+  const handleConfirmEdit = () => {
+    setConfirmOpen(false);
+    setOpen(true);
+  };
+
+  return (
+    <>
+      {showTrigger && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1"
+          onClick={() => setConfirmOpen(true)}
+        >
+          <Pencil className="h-4 w-4" />
+          Edit
+        </Button>
+      )}
+
+      {showTrigger && (
+        <GlassAlertDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          variant="default"
+          icon={<Pencil className="h-6 w-6" />}
+          title="Edit application?"
+          description={`${job.position} at ${job.company}`}
+          cancelLabel="Cancel"
+          confirmLabel="Edit"
+          confirmIcon={<Pencil className="h-4 w-4" aria-hidden />}
+          onConfirm={handleConfirmEdit}
+        />
+      )}
+
+      <Dialog modal open={open} onOpenChange={handleOpenChange}>
+        <GlassDialogContent description="Edit job application details">
+          <GlassCard variant="violet" className={JOB_DIALOG_PANEL_CLASS}>
+            <DialogHeader className="sr-only">
+              <DialogTitle>Edit Job</DialogTitle>
+            </DialogHeader>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <EditJobForm
+                jobId={job.id}
+                seedJob={'updatedAt' in job ? job : undefined}
+                standalone={false}
+                formLoading={formLoading}
+                onSuccess={() => handleOpenChange(false)}
+                onCancel={() => handleOpenChange(false)}
+              />
+            </div>
+            {aiPanel && (
+              <div className="overlay-scroll max-h-[40vh] overflow-y-auto border-t border-glass-border px-4 pb-4 sm:px-6 sm:pb-6">
+                {aiPanel}
+              </div>
+            )}
+          </GlassCard>
+        </GlassDialogContent>
+      </Dialog>
+    </>
+  );
+}

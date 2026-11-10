@@ -1,0 +1,564 @@
+# Jobify v2 — Tech Stack Analysis
+
+**Version:** v1.6  
+**Date:** 2026-06-19 · **Last updated:** 2026-06-28 (Phase 3 partial)  
+**Status:** Phase 1 **✅ complete** · Phase 2 **~90%** · Phase 3 **🔄 partial**
+
+**Verified:** lint ✓ · typecheck ✓ · test **51/51** ✓ · build ✓ · `59060a0`
+
+---
+
+## Table of Contents
+
+0. [Implementation Status (Audit)](#0-implementation-status-audit)
+1. [Current Stack (Existing)](#1-current-stack-existing)
+2. [Phase 1 Additions — Job Postings Catalog](#2-phase-1-additions--job-postings-catalog)
+3. [Phase 2 — Python AI Backend](#3-phase-2--python-ai-backend)
+4. [LLM Provider Comparison](#4-llm-provider-comparison)
+5. [Automation Layer (n8n)](#5-automation-layer-n8n)
+6. [Infrastructure — Coolify VPS](#6-infrastructure--coolify-vps)
+7. [Frontend New Features Stack](#7-frontend-new-features-stack)
+8. [Database Schema](#8-database-schema)
+9. [What NOT To Use](#9-what-not-to-use)
+10. [Full Stack Summary](#10-full-stack-summary)
+
+---
+
+## 0. Implementation Status (Audit)
+
+**Verified 2026-06-27:** lint ✓ · typecheck ✓ · test **51/51** ✓ · build ✓
+
+### Legend
+
+| Symbol | Meaning |
+| --- | --- |
+| ✅ | Implemented and in production codebase |
+| ⚠️ | Partial / scaffolded / optional dependency |
+| ⬜ | Planned, not in codebase |
+
+### By layer
+
+| Layer | Planned tool | Status | Notes |
+| --- | --- | --- | --- |
+| Next.js 16 App Router | ✅ | `force-dynamic` + SSR prefetch on all dashboard pages |
+| React 19 | ✅ | Server + Client Components |
+| NextAuth v5 (Auth.js) | ✅ | `middleware.ts` + `auth.ts` + Prisma adapter |
+| Prisma 6 + PostgreSQL | ✅ | `Job` + postings catalog + `JobAIInsight` + `UserProfile` models |
+| TanStack Query 5 | ✅ | Persist + hydration + optimistic mutations |
+| Redis (Upstash) | ⚠️ | Optional — in-memory + BroadcastChannel fallback |
+| Postings catalog | ✅ | Own Postgres tables, link + resync, discover, `/api/postings`, cron |
+| Resend | ⚠️ | React Email templates; no-op without key |
+| React Email | ✅ | `@react-email/components` + `@react-email/render` |
+| Sentry | ⚠️ | Integrated; optional via env |
+| PostHog | ⚠️ | `posthog-js` + `PostHogProvider` — no-op without `NEXT_PUBLIC_POSTHOG_KEY` |
+| Playwright E2E | ✅ | `tests/e2e/*.spec.ts` — auth setup + console/network assertions |
+| Vitest | ✅ | **105** tests |
+| FastAPI AI service | ⚠️ | Code complete; not deployed |
+| Ollama | ⬜ | Router ready; no VPS Ollama instance |
+| Groq / OpenRouter / Anthropic | ⚠️ | Client code in python-ai-service |
+| n8n | ⚠️ | JSON templates in `docs/n8n/` — instance not deployed |
+| Coolify VPS | ⬜ | Planned infrastructure |
+| ARQ / Celery | ⬜ | Pipeline is synchronous |
+
+### Phase 1 feature matrix
+
+| Feature | Status | Files |
+| --- | --- | --- |
+| Catalog tables + Job snapshot columns | ✅ | `prisma/schema.prisma` |
+| Auto-link on CRUD | ✅ | `utils/actions.ts`, `lib/postings/link.ts` |
+| Posting badges on cards | ✅ | `components/jobs/job-enrichment-badge.tsx` |
+| `/discover` search | ✅ | `app/(dashboard)/discover/` |
+| Keyset infinite pagination | ✅ | `useInfiniteQuery`, `buildDiscoverQueryOptions` |
+| Glass filter bar | ✅ | `components/discover/discover-filters.tsx` |
+| Track Application → dashboard sync | ✅ | `useTrackDiscoverJobMutation` in `discover-job-card.tsx` |
+| Details modal | ✅ | `discover-job-details-modal.tsx` |
+| Postings read API | ✅ | `app/api/postings/**` |
+| Nightly cron resync | ✅ | `app/api/cron/enrich/route.ts`, `vercel.json` |
+| Notification bell (SSE) | ✅ | `notification-bell.tsx`, `notifications-context.tsx` |
+| Per-change email | ✅ | `lib/notifications/email.ts` |
+| Stats KPI row | ✅ | `components/stats/stats-kpi-row.tsx` |
+| 4 chart types + weekly query | ✅ | `components/stats/*`, `getCachedWeeklyCharts` |
+| Posting Activity tab | ✅ | `getPostingEvents`, `posting-activity-tab.tsx`, `job-detail-panels.tsx` |
+| Facet counts | ✅ | `getPostingFacets` — inline counts in `DiscoverFilters` |
+| Weekly digest email | ✅ | `/api/cron/weekly-digest` + `WeeklyDigestEmail` |
+| Company logos | ✅ | `CompanyLogo` — Google s2 favicons + Building2 fallback |
+| Global timeline (`/timeline`) | ✅ | `lib/jobs/timeline.ts` — derived from Job + aiInsight |
+| Discover two-panel sidebar | ✅ | `DiscoverSidebar` on `lg+` |
+
+### Phase 2 feature matrix
+
+| Feature | Status | Files |
+| --- | --- | --- |
+| FastAPI app | ✅ | `python-ai-service/app/main.py` |
+| 9-agent pipeline | ✅ | `python-ai-service/app/pipeline/` |
+| LLM fallback router | ✅ | `python-ai-service/app/llm/router.py` |
+| Next.js proxy (SSE stream) | ✅ | `app/api/ai/pipeline/stream/route.ts` |
+| `useStreamPipeline` | ✅ | SSE streaming hook (`hooks/useAIPipeline.ts`) |
+| Panel UI | ✅ | DB load + `useStreamPipeline` + `PipelineProgress` |
+| `JobAIInsight` DB model | ✅ | `prisma/schema.prisma` — one-to-one with Job |
+| `UserProfile` DB model + UI | ✅ | `/profile` + `UserProfileForm` + `useUserProfileMutation` |
+| AI output streaming | ✅ | SSE per-agent progress; cover letter after pipeline completes |
+| 9-agent progress UI | ✅ | `PipelineProgress` component |
+| n8n flows | ⚠️ | `docs/n8n/*.json` templates — instance not deployed |
+| `/api/internal/*` routes | ✅ | `internal/jobs`, `internal/notify` (`X-Internal-Secret`) |
+| Coolify deploy | ⬜ | — |
+
+### Phase 3 feature matrix (partial)
+
+| Feature | Status | Files |
+| --- | --- | --- |
+| AI fit chip on JobCard | ✅ | `ai-fit-chip.tsx` · `getCachedJobs` aiInsight include |
+| Resume PDF parser | ✅ | `lib/pdf/extract-text.ts` · `uploadResumeAction` · `resume-upload.tsx` |
+| Skill gap analyzer | ✅ | `lib/jobs/skill-gap.ts` · `skill-gap-tab.tsx` |
+| Salary intelligence | ✅ | `getSalaryIntelligenceAction` · `salary-intelligence.tsx` |
+| react-markdown | ✅ | `AiInsightsPanel` + remark-gfm |
+| Framer Motion badges | ✅ | `JobEnrichmentBadge` AnimatePresence |
+| Browser extension | ⬜ | — |
+| Team mode | ⬜ | — |
+| Auto-apply email | ⬜ | — |
+
+## 1. Current Stack (Existing)
+
+The foundation. Phase 1 and 2 build on top — don't replace.
+
+| Layer | Tool | Version (package.json) | Notes |
+| --- | --- | --- | --- |
+| Framework | Next.js | 16.x | App Router, RSC, Server Actions, Turbopack dev |
+| Runtime | React | 19.x | Concurrent features |
+| Auth | NextAuth v5 | `middleware.ts`, `auth()`, Prisma `User` |
+| ORM | Prisma | 6.x | PostgreSQL driver |
+| Database | PostgreSQL | 16+ | Primary data store |
+| Server cache | Redis (Upstash) | optional | `unstable_cache` + tag invalidation + optional read-through |
+| Client state | TanStack Query | 5.x | `PersistQueryClient`, SSR hydration |
+| Styling | Tailwind CSS | 3.4.x | JIT, glass morphism design |
+| Components | shadcn/ui | latest | Radix primitives, owned code |
+| Charts | Recharts | 2.x | Stats page (Bar, Area, Pie, Composed) |
+| Monitoring | Sentry | 10.x | Error + performance (optional) |
+| Analytics | PostHog | — | **Deferred** — guide in `docs/Redis_Sentry_PostHog_INTEGRATION_GUIDE.md` |
+| Testing | Vitest | 4.x | **51** tests |
+| Deployment | Vercel | — | SSR + cron |
+| CI | GitHub Actions | — | lint → typecheck → test → build |
+
+**Current data flow:**
+
+```text
+NextAuth auth → middleware.ts → /dashboard · /discover · /stats · /timeline · /profile
+Page: force-dynamic + prefetchQuery / prefetchInfiniteQuery → dehydrate → PersistQueryClient
+CRUD: Server Actions → useJobsMutation (optimistic) → invalidateAllJobQueries → broadcast
+Cache: unstable_cache + optional Redis + revalidateTag
+Realtime: SSE /api/jobs/events + BroadcastChannel (jobify-cache, jobify-notifications)
+```
+
+---
+
+## 2. Phase 1 Additions — Job Postings Catalog
+
+Built inside Next.js on the same Postgres database. No separate microservice.
+
+> Phase 1 originally used the external Bluedoor Job Postings API. That API no longer exists, so it was replaced by the app's own catalog (ISSUE-0011 / ISSUE-0012): the Bluedoor client, webhook route and `bluedoor*` columns were removed.
+
+### 2.1 Postings catalog ✅
+
+| Property | Value |
+| --- | --- |
+| Tables | `companies` · `job_postings` · `job_posting_events` |
+| Keys | `JobPosting.companyId` → `Company` (cascade) · `JobPostingEvent.postingId` → `JobPosting` (cascade) · `Job.postingId` → `JobPosting` (SetNull, unique per user) |
+| Data | `npm run db:seed` — 15 companies, 50 postings (40 open / 10 closed), lifecycle events |
+| Cache | `unstable_cache` tagged `postings`, 5-minute revalidate |
+
+**Read surface:**
+
+| Reader | Purpose | Implementation |
+| --- | --- | --- |
+| `searchPostingsAction` / `GET /api/postings` | Keyset search + filters | `lib/postings/queries.ts` `searchPostings` |
+| `getPostingDetailsAction` / `GET /api/postings/:id` | Full posting (Details modal) | `getPostingDetail` |
+| `getPostingEventsAction` / `GET /api/postings/:id/events` | Lifecycle history (Posting Activity tab) | `getPostingEvents` |
+| `getPostingFacetsAction` / `GET /api/postings/facets` | Live filter counts | `getPostingFacets` (`groupBy`) |
+
+**Join strategy (implemented in `lib/postings/link.ts`):**
+
+1. Exact normalised apply URL
+2. Same company name + title similarity ≥ 0.5
+
+### 2.2 Email — Resend ⚠️
+
+| Property | Value |
+| --- | --- |
+| Free tier | 3,000 emails/month |
+| SDK | `resend` npm package ✅ in dependencies |
+| Template system | React Email JSX ✅ (`lib/notifications/templates/`) |
+| Use cases | `posting_closed` · `jd_changed` · `salary_added` ✅ · weekly digest ✅ |
+
+**Implementation:** `lib/notifications/email.ts` — graceful no-op when `RESEND_API_KEY` absent.
+
+### 2.3 Scheduled Posting Resync ✅
+
+| Option | Status | Notes |
+| --- | --- | --- |
+| Vercel Cron | ✅ | `vercel.json` → posting resync 03:00 UTC · weekly-digest Sunday 09:00 UTC |
+| n8n cron | ⬜ | Planned Phase 2 migration |
+
+Batch: linked jobs resynced 10 at a time; cron auth fails closed without `CRON_SECRET` (`lib/cron-auth.ts`).
+
+### 2.4 Phase 1 Dependencies (actual)
+
+```json
+{
+  "resend": "^6.16.0",
+  "@react-email/components": "^1.0.12",
+  "@react-email/render": "^2.0.9"
+}
+```
+
+### 2.5 Phase 1 Architecture Choice: Server Actions vs API Routes
+
+| Approach | Plan doc (original) | **Actual implementation** |
+| --- | --- | --- |
+| Postings search | API route | `searchPostingsAction` (UI) + `GET /api/postings` (same zod schema) |
+| Link trigger | API route | `after(() => linkJobToPosting())` on CRUD |
+| Cron | API route | ✅ `GET /api/cron/enrich` + `GET /api/cron/weekly-digest` |
+
+Server Actions chosen for type safety, shared auth pattern, and consistency with existing CRUD.
+
+---
+
+## 3. Phase 2 — Python AI Backend
+
+Separate FastAPI service. **Code in repo; not deployed to production.**
+
+### 3.1 Framework ✅ (in repo)
+
+| Tool | Version | Status |
+| --- | --- | --- |
+| Python | 3.12+ | ✅ `python-ai-service/` |
+| FastAPI | 0.115+ | ✅ `app/main.py` |
+| Pydantic | v2 | ✅ `app/models/` |
+| uvicorn | latest | ✅ Dockerfile |
+| httpx | latest | ✅ LLM provider clients |
+
+### 3.2 LLM Orchestration ⚠️
+
+| Tool | Role | Status |
+| --- | --- | --- |
+| Free-tier registry | Groq → Gemini → OpenRouter `:free` → Hugging Face model chains | ✅ `registry.py` |
+| OpenAI-compatible client | One httpx client for all four providers | ✅ `openai_compat.py` |
+| Ollama | Optional, only when `OLLAMA_BASE_URL` is set | ✅ `ollama_client.py` (opt-in) |
+| Anthropic (httpx) | Paid last resort, only when `ANTHROPIC_API_KEY` is set | ✅ `anthropic_client.py` (opt-in) |
+| LangChain | Optional patterns | ⬜ Not used — raw clients preferred |
+
+**Router:** `app/llm/router.py` — walk the registry (missing key = skip; 401/402/403 = next provider; 429/404/5xx/timeout/empty = next model; 20s budget), then optional Ollama / Anthropic. See `docs/LLM_MODEL_SELECTION.md`.
+
+### 3.3 Local Ollama Models (planned deploy)
+
+| Model | Size | Use case |
+| --- | --- | --- |
+| `llama3.2:8b` | 5GB | Primary |
+| `mistral:7b` | 4.1GB | Fallback 2 |
+| `gemma2:9b` | 5.5GB | Quality fallback |
+| `phi3:3.8b` | 2.2GB | Fast tasks |
+| `llama3.2:3b` | 2GB | Emergency fast path |
+
+**VPS RAM:** 16GB minimum (CX41), 32GB recommended (CX51).
+
+### 3.4 Cloud LLM Fallbacks ✅ (client code ready)
+
+| Provider | Free Tier | Status |
+| --- | --- | --- |
+| Groq | Yes | ✅ Client implemented |
+| OpenRouter | Free models | ✅ Client implemented |
+| Anthropic Haiku | Paid (cheap) | ✅ Client implemented |
+
+### 3.5 Async Task Queue ⬜
+
+| Tool | Status |
+| --- | --- |
+| ARQ + Redis | ⬜ Planned — pipeline is sync today |
+| Celery | ⬜ Overkill for current scale |
+| FastAPI BackgroundTasks | ⬜ Not used for pipeline |
+
+### 3.6 Next.js ↔ Python Integration ✅
+
+| Piece | Status | Path |
+| --- | --- | --- |
+| Proxy route (SSE) | ✅ | `app/api/ai/pipeline/stream/route.ts` |
+| TS types + mappers | ✅ | `lib/ai/pipeline-client.ts`, `lib/ai/insight-mapper.ts` |
+| Stream hook | ✅ | `hooks/useAIPipeline.ts` (`useStreamPipeline`) |
+| UI panel | ✅ | `ai-insights-panel.tsx` + `pipeline-progress.tsx` |
+| Env vars | ⚠️ | `AI_SERVICE_URL`, `AI_SERVICE_SECRET` |
+| FastAPI streaming endpoint | ✅ | `POST /pipeline/run/stream` in `pipeline.py` |
+
+---
+
+## 4. LLM Provider Comparison
+
+| Provider | Hosting | Cost | Privacy | Use in Chain |
+| --- | --- | --- | --- | --- |
+| Ollama (llama3.2:8b) | Self (VPS) | Free | Perfect | Priority 1-5 ⬜ deploy |
+| Groq | Cloud | Free tier | Data to US | Priority 6-7 ✅ code |
+| OpenRouter | Cloud | Free models | Data to providers | Priority 8-9 ✅ code |
+| Claude Haiku | Cloud | ~$0.001/1k tok | Anthropic policy | Last resort ✅ code |
+
+**Recommendation unchanged:** Ollama primary → Groq → OpenRouter → Claude Haiku.
+
+---
+
+## 5. Automation Layer (n8n)
+
+**Status: ⚠️ Partial — JSON templates in `docs/n8n/`; no running instance.**
+
+### 5.1 What is n8n
+
+Visual workflow automation (self-hosted, free). Planned for Coolify VPS.
+
+### 5.2 n8n vs alternatives
+
+| Tool | Verdict |
+| --- | --- |
+| **n8n** | **USE** — fits Coolify VPS (when deployed) |
+| Zapier / Make | Skip — paid |
+| Prefect / Airflow | Overkill |
+| Vercel Cron | ✅ **In use today** for nightly enrich |
+
+### 5.3 Key n8n Flows (planned)
+
+| Flow | Today | n8n (planned) |
+| --- | --- | --- |
+| Nightly enrichment | ✅ Vercel cron | Migrate for flexibility |
+| Daily job digest | ⚠️ | `docs/n8n/daily-digest.json` template |
+| Stale app alert | ⚠️ | `docs/n8n/stale-app-alert.json` template |
+| Interview prep auto-trigger | ⬜ | n8n on status change |
+| Posting closed alert | ⚠️ Webhook + Resend in Next.js | Could move to n8n |
+
+### 5.4 n8n + Next.js Integration
+
+**Built:**
+
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/api/internal/jobs` | GET | List jobs by `userId` |
+| `/api/internal/notify` | POST | Push in-app notification via SSE bus |
+| `/api/ai/pipeline/stream` | POST | SSE streaming AI pipeline (NextAuth auth) |
+
+**Workflow templates** (import into n8n when deployed): `docs/n8n/daily-digest.json`, `stale-app-alert.json`, `posting-change-webhook.json`
+
+---
+
+## 6. Infrastructure — Coolify VPS
+
+**Status: ⬜ Planned — Next.js currently on Vercel.**
+
+### 6.1 Target services (all ⬜ except Vercel Next.js today)
+
+```text
+Coolify VPS (planned)
+├── jobify-web (Next.js)     — currently Vercel ✅
+├── jobify-ai (FastAPI)      — code ready ⬜
+├── jobify-db (PostgreSQL)   — external (Neon/VPS) ✅
+├── jobify-redis (Redis)     — Upstash optional ✅
+├── jobify-ollama (Ollama)   — ⬜
+└── jobify-n8n (n8n)         — ⬜
+```
+
+### 6.2 Hetzner VPS Sizing
+
+| Plan | RAM | Sufficient for |
+| --- | --- | --- |
+| CX31 (8GB) | 8GB | Phase 1 only |
+| CX41 (16GB) | 16GB | Phase 2 + Ollama 7B |
+| CX51 (32GB) | 32GB | Concurrent LLM + n8n |
+
+---
+
+## 7. Frontend New Features Stack
+
+| Feature | Tool | Status |
+| --- | --- | --- |
+| Job discovery search | TanStack Query + Server Actions | ✅ |
+| Infinite scroll | `useInfiniteQuery` + cursor | ✅ |
+| Glass filter dropdowns | `GlassDropdownTrigger` pattern | ✅ |
+| Static card shells | `JobCardShell`, `DiscoverCardShell` | ✅ |
+| Stats charts | Recharts (4 chart types) | ✅ |
+| KPI derived metrics | `StatsKpiCards` (no extra DB query) | ✅ |
+| Notification center | SSE + BroadcastChannel | ✅ |
+| Posting Activity timeline | `PostingActivityTab` on `/dashboard/[id]` | ✅ |
+| AI output display | `AiInsightsPanel` — DB cache + SSE streaming | ✅ |
+| AI streaming | SSE `/api/ai/pipeline/stream` + `PipelineProgress` | ✅ |
+| Global timeline | `/timeline` + `TimelineView` | ✅ |
+| User profile UI | `/profile` + `UserProfileForm` | ✅ |
+| PostHog analytics | `lib/analytics/posthog.ts` — optional env | ⚠️ |
+| E2E tests | Playwright `tests/e2e/` | ⚠️ |
+| Markdown rendering | `react-markdown` + remark-gfm | ✅ |
+| Company logos | Clearbit via `CompanyLogo` | ✅ |
+| Framer Motion badges | Animated status change | ✅ |
+| AI fit chip | `AIFitChip` on JobCard | ✅ |
+| Resume PDF parser | pdfjs-dist server-side | ✅ |
+| Skill gap tab | Keyword-based profile vs JD | ✅ |
+| Salary intelligence | Aggregated enriched job salaries on `/stats` | ✅ |
+| 9-agent progress UI | Step indicator | ✅ `PipelineProgress` |
+
+## 8. Database Schema
+
+### 8.1 Phase 1 — Job model + postings catalog ✅
+
+```prisma
+model Job {
+  // ... core fields ...
+  applyUrl          String?
+  postingId         String?   // FK → JobPosting (SetNull); @@unique([userId, postingId])
+  postingStatus     String?   // open | closed — snapshot at last sync
+  workplaceType     String?
+  salaryMin         Int?
+  salaryMax         Int?
+  salaryCurrency    String?
+  postingDescHash   String?
+  postingSyncedAt   DateTime?
+  postingChangedAt  DateTime?
+  postingChangeType String?   // posting_closed | jd_changed | salary_added
+
+  aiInsight    JobAIInsight?
+}
+
+model Company         { id, name, slug @unique, domain, size, industry, hq }
+model JobPosting      { companyId → Company (cascade), title, description, workplaceType, employmentType,
+                        salary*, applyUrl @unique, status, contentHash, postedAt, closedAt }
+model JobPostingEvent { postingId → JobPosting (cascade), type, fieldName, oldValue, newValue, observedAt }
+```
+
+### 8.2 Phase 2 — AI models ✅ (migrated)
+
+```prisma
+model JobAIInsight {
+  id              String   @id @default(cuid())
+  jobId           String   @unique
+  userId          String   @map("user_id")
+  fitScore        Int?
+  fitLabel        String?
+  summary         String?
+  coverLetter     String?
+  interviewAngles String[] @default([])
+  redFlags        String[] @default([])
+  generatedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  job             Job      @relation(...)   // cascade
+  user            User     @relation(...)   // cascade
+}
+
+model UserProfile {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")   @unique
+  skills          String[] @default([])
+  targetRoles     String[] @default([])
+  experienceLevel String?
+  resumeText      String?
+  // ...
+}
+```
+
+**Note:** `UserProfile` has `/profile` UI + `useUserProfileMutation`.
+
+### 8.3 Query / cache keys ✅
+
+| Key | Persisted | Invalidated on CRUD |
+| --- | --- | --- |
+| `jobs.*` | ✅ | ✅ |
+| `stats` | ✅ | ✅ |
+| `charts` | ✅ | ✅ |
+| `charts-weekly` | ✅ | ✅ |
+| `job(id)` | ✅ | ✅ |
+| `discover.*` | ❌ | N/A (catalog, server `postings` tag) |
+| `discover.facets` | ❌ | N/A (staleTime 5 min) |
+| `ai.pipeline(id)` | ❌ | N/A (on-demand mutation) |
+| `aiInsight.job(id)` | ❌ | DB is source of truth |
+| `timeline` | ❌ | SSR prefetch; invalidated via `jobsTag` |
+
+---
+
+## 9. What NOT To Use
+
+| Tool | Why Skip |
+| --- | --- |
+| LangChain (full) | Too much abstraction — raw clients used instead ✅ |
+| LangGraph | Overkill for linear pipeline ✅ |
+| AutoGen / CrewAI | Unpredictable output ✅ |
+| GPT-4 / GPT-4o | Paid, not needed |
+| Pinecone / Weaviate | No vector search in Phase 2 |
+| Kafka / RabbitMQ | Redis + ARQ sufficient |
+| Kubernetes | Coolify + Docker Compose sufficient |
+| Scrapy | Catalog is first-party data in Postgres ✅ |
+| WebSockets (new) | SSE infrastructure sufficient ✅ |
+| Duplicate postings logic per entry point | Server Actions + `/api/postings` share queries and zod schemas ✅ |
+
+---
+
+## 10. Full Stack Summary
+
+### Shipped today (production codebase)
+
+| Layer | Tool | Free? |
+| --- | --- | --- |
+| Frontend | Next.js 16 + React 19 | Yes |
+| Auth | NextAuth v5 | Free (self-hosted OAuth) |
+| Database | PostgreSQL + Prisma 6 | Yes |
+| Cache | Redis (optional) + unstable_cache | Yes |
+| Client state | TanStack Query 5 + Persist | Yes |
+| Job postings | Own Postgres catalog | Yes |
+| Email alerts | Resend + React Email | Yes (3k/mo) |
+| Weekly digest | Vercel Cron + WeeklyDigestEmail | Yes |
+| Scheduled sync | Vercel Cron (posting resync + digest) | Yes |
+| Notifications | SSE + BroadcastChannel | Yes |
+| Monitoring | Sentry | Free tier |
+| Deployment | Vercel | Free hobby |
+| Testing | Vitest **105** · pytest 26 · Playwright | Yes |
+
+### Scaffolded / partial (code in repo)
+
+| Layer | Tool | Notes |
+| --- | --- | --- |
+| AI service | FastAPI + 9-agent pipeline | Not deployed to VPS |
+| LLM clients | Ollama, Groq, OpenRouter, Anthropic | Router ready |
+| AI UI | AiInsightsPanel + PipelineProgress + useStreamPipeline | ✅ |
+| AI DB | JobAIInsight + UserProfile | ✅ |
+| User profile page | `/profile` | ✅ |
+| Global timeline | `/timeline` | ✅ |
+| n8n integration | Internal API + JSON templates | ⚠️ deploy pending |
+| Analytics | PostHog (optional) | ⚠️ |
+| E2E | Playwright specs | ⚠️ |
+
+### Shipped (Phase 3 partial)
+
+| Layer | Tool |
+| --- | --- |
+| AI fit chip | `AIFitChip` on JobCard |
+| Resume PDF parser | pdfjs-dist + `uploadResumeAction` |
+| Skill gap | `computeSkillGap` + `SkillGapTab` |
+| Salary intel | `SalaryIntelligence` on `/stats` |
+
+### Planned (not in codebase)
+
+| Layer | Tool |
+| --- | --- |
+| Automation | n8n instance on Coolify |
+| Container PaaS | Coolify on Hetzner |
+| Local LLM runtime | Ollama on VPS |
+| Task queue | ARQ + Redis |
+| Browser extension | One-click track from career pages |
+| Team mode | Shared job lists |
+| Auto-apply email | Parse confirmations → auto-log |
+
+### Tech Decisions Rationale
+
+| Decision | Rationale |
+| --- | --- |
+| Server Actions for the UI, read API alongside | Type-safe, shared auth, matches existing CRUD |
+| Ollama primary | Privacy, free, no rate limits |
+| Vercel Cron before n8n | Simpler for Phase 1 nightly sync |
+| SSE over WebSockets | Already built for invalidation + notifications |
+| Discover not persisted | Catalog changes server-side — always fresh |
+| AI insights in DB | `JobAIInsight` — instant load; Regenerate on demand |
+| AI RQ queries not persisted | `ai.pipeline` mutation ephemeral; DB is cache |
+| Single PostgreSQL | No multi-DB complexity |
+
+---
+
+_Document version: v1.6 — Last updated 2026-06-28 (Phase 3 partial) · `59060a0`_
+_See also: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · [PROJECT_WALKTHROUGH.md](./PROJECT_WALKTHROUGH.md)_

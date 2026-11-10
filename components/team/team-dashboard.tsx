@@ -1,0 +1,218 @@
+"use client";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Users2, AlertCircle, RefreshCw } from "lucide-react";
+import { queryKeys } from "@/lib/query-keys";
+import { useQueryBodyLoading } from "@/lib/query-body-loading";
+import { useInitialNavUser } from "@/context/nav-user-context";
+import { useIsRouteFallback } from "@/components/providers/route-fallback-provider";
+import { getTeamAction } from "@/utils/actions";
+import { CreateTeamForm } from "@/components/team/create-team-form";
+import { InviteMemberForm } from "@/components/team/invite-member-form";
+import { TeamMemberList } from "@/components/team/team-member-list";
+import { GlassCard } from "@/components/ui/glass-card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { TeamRole } from "@/utils/types";
+
+type Props = {
+  /** Server session id; the route loading fallback omits it and uses the SSR nav-user snapshot */
+  userId?: string;
+};
+
+export function TeamDashboard({ userId }: Props) {
+  const queryClient = useQueryClient();
+  const navUser = useInitialNavUser();
+  const currentUserId = userId ?? navUser?.id ?? "";
+  const isRouteFallback = useIsRouteFallback();
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: queryKeys.team.current(),
+    queryFn: () => getTeamAction(),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    enabled: !isRouteFallback,
+  });
+  const bodyLoading = useQueryBodyLoading(queryKeys.team.current(), isLoading);
+
+  if (bodyLoading) {
+    return (
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <GlassCard variant="violet">
+            <div className="flex flex-col gap-4 py-4">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-lg border border-border/20 bg-glass-inset-soft px-4 py-3"
+                >
+                  <div className="h-8 w-8 animate-pulse rounded-full bg-muted/20" />
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <div className="h-3.5 w-32 animate-pulse rounded bg-muted/20" />
+                    <div className="h-3 w-48 animate-pulse rounded bg-muted/20" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </div>
+
+        {/* Right column mirrors the loaded layout: Team Info frame + static explainer */}
+        <div className="flex flex-col gap-4">
+          <GlassCard variant="emerald">
+            <div className="flex flex-col gap-3">
+              <TeamInfoHeading />
+              <div className="h-[62px] animate-pulse rounded-lg bg-muted/20" />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="h-[62px] animate-pulse rounded-lg bg-muted/20" />
+                <div className="h-[62px] animate-pulse rounded-lg bg-muted/20" />
+              </div>
+            </div>
+          </GlassCard>
+          <TeamModeExplainerCard />
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12 text-center">
+        <AlertCircle className="h-8 w-8 text-ink-rose" />
+        <p className="text-sm text-muted-foreground">
+          Failed to load team data.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.team.current(),
+            })
+          }
+          className="gap-2"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // No team yet — show create form
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-md">
+        <GlassCard variant="violet">
+          <CreateTeamForm />
+        </GlassCard>
+      </div>
+    );
+  }
+
+  const { team, members, role } = data;
+  const canManage = role === "owner" || role === "admin";
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      {/* Members list + invite */}
+      <div className="lg:col-span-2 flex flex-col gap-4">
+        {canManage && (
+          <GlassCard variant="sky">
+            <h3 className="mb-3 text-sm font-semibold text-tone-sky">
+              Invite Member
+            </h3>
+            <InviteMemberForm team={team} />
+          </GlassCard>
+        )}
+
+        <GlassCard variant="violet">
+          <h3 className="mb-3 text-sm font-semibold text-tone-violet">
+            Members{" "}
+            <span className="ml-1 text-muted-foreground/60">
+              ({members.length})
+            </span>
+          </h3>
+          <TeamMemberList
+            members={members}
+            currentUserId={currentUserId}
+            currentRole={role as TeamRole}
+            teamId={team.id}
+          />
+        </GlassCard>
+      </div>
+
+      {/* Team info panel */}
+      <div className="flex flex-col gap-4">
+        <GlassCard variant="emerald">
+          <div className="flex flex-col gap-3">
+            <TeamInfoHeading />
+
+            <div className="rounded-lg border border-border/20 bg-glass-inset px-4 py-3">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Team name
+              </p>
+              <p className="text-sm font-semibold">{team.name}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-border/20 bg-glass-inset px-3 py-2.5 text-center">
+                <p className="text-2xl font-semibold tabular-nums text-ink-emerald">
+                  {members.length}
+                </p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                  Members
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/20 bg-glass-inset px-3 py-2.5 text-center">
+                <p
+                  className={cn(
+                    "text-sm font-semibold capitalize",
+                    role === "owner"
+                      ? "text-ink-amber"
+                      : role === "admin"
+                        ? "text-ink-violet"
+                        : "text-muted-foreground",
+                  )}
+                >
+                  {role}
+                </p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                  Your role
+                </p>
+              </div>
+            </div>
+          </div>
+        </GlassCard>
+
+        <TeamModeExplainerCard />
+      </div>
+    </div>
+  );
+}
+
+function TeamInfoHeading() {
+  return (
+    <div className="flex items-center gap-2">
+      <Users2 className="h-4 w-4 text-ink-emerald" />
+      <h3 className="text-sm font-semibold text-tone-emerald">Team Info</h3>
+    </div>
+  );
+}
+
+/** Static explainer — shared by the loaded view and the loading skeleton */
+function TeamModeExplainerCard() {
+  return (
+    <GlassCard variant="neutral">
+      <h3 className="mb-2 text-sm font-semibold">How team mode works</h3>
+      <ul className="flex flex-col gap-2 text-xs text-muted-foreground">
+        <li>• Team members can see each other&apos;s job applications</li>
+        <li>• Admins and owners can invite or remove members</li>
+        <li>• Owners can delegate admin rights to trusted members</li>
+        <li>
+          • Each member&apos;s data stays private unless shared to the team
+        </li>
+      </ul>
+    </GlassCard>
+  );
+}

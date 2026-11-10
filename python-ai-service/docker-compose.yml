@@ -1,0 +1,42 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  ai-service:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Bundled redis service by name — localhost inside a container is the container itself
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - redis
+    # Ollama running on host — use host-gateway so container can reach it
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ARQ worker — consumes pipeline tasks from Redis queue
+  arq-worker:
+    build: .
+    command: arq app.tasks.pipeline_task.WorkerSettings
+    env_file:
+      - .env
+    environment:
+      # Bundled redis service by name — localhost inside a container is the container itself
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  redis_data:

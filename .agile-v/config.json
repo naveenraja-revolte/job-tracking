@@ -1,0 +1,106 @@
+{
+  "project": {
+    "name": "Jobify — Job Application Tracker",
+    "repo": "18-nextjs-jobify-app",
+    "framework": "Next.js 16 App Router",
+    "language": "TypeScript",
+    "domain_build_skill": "build-agent-js"
+  },
+  "agile_v": {
+    "version": "1.4",
+    "cycle": "C1",
+    "standard": "Agile V Infinity Loop",
+    "regulatory_context": "non-regulated",
+    "activated": "2026-06-11T10:25:44Z",
+    "reactivated": "2026-07-24T10:16:00Z",
+    "session_status": "ACTIVE",
+    "infinity_loop": true
+  },
+  "stack": {
+    "frontend": ["Next.js 16", "React 19", "Tailwind CSS", "shadcn/ui", "TanStack Query 5", "Sonner"],
+    "backend": ["Next.js Server Actions", "Prisma 6", "PostgreSQL", "FastAPI + ARQ"],
+    "auth": ["NextAuth v5"],
+    "integrations": ["Bluedoor API", "Resend"],
+    "observability": ["Sentry (optional)", "PostHog (optional)"],
+    "cache": ["unstable_cache", "Redis", "React Query", "SSE", "BroadcastChannel"],
+    "deployment": ["Vercel (Next.js)", "Coolify VPS (redis + AI + ARQ ✅)"]
+  },
+  "approval_authority": {
+    "gate_1": ["Project Owner", "Tech Lead"],
+    "gate_2": ["Project Owner"]
+  },
+  "model_versions": {
+    "orchestrator": { "tier": "high", "last_validated": "2026-07-24", "validated_by": "infinity-loop-reactivate" },
+    "build_agent": { "tier": "medium", "last_validated": "2026-07-24", "validated_by": "infinity-loop-reactivate" },
+    "red_team": { "tier": "medium", "last_validated": "2026-06-30", "validated_by": "EVAL-0019" }
+  },
+  "llm_provider_registry": [
+    {
+      "name": "Cursor Agent",
+      "models": ["auto"],
+      "data_residency": "provider-default",
+      "retention": "session",
+      "api_data_usage": "per Cursor policy",
+      "approved_for": ["source_code", "requirements", "non-PHI"],
+      "review_date": "2026-07-24"
+    }
+  ],
+  "active_skills": {
+    "framework": [
+      "agile-v-core",
+      "agile-v-pipeline",
+      "agile-v-lifecycle",
+      "agile-v-compliance",
+      "agile-v-quality-gates",
+      "agile-v-product-owner"
+    ],
+    "agents": [
+      "requirement-architect",
+      "discovery-analyst",
+      "logic-gatekeeper",
+      "threat-modeler",
+      "ux-spec-author",
+      "build-agent",
+      "build-agent-js",
+      "build-agent-python",
+      "test-designer",
+      "red-team-verifier",
+      "compliance-auditor",
+      "documentation-agent",
+      "observability-planner",
+      "release-manager",
+      "deployment-expert"
+    ],
+    "domain_primary": "build-agent-js"
+  },
+  "paths": {
+    "state": ".agile-v/STATE.md",
+    "requirements": ".agile-v/REQUIREMENTS.md",
+    "decision_log": ".agile-v/DECISION_LOG.md",
+    "validation": ".agile-v/VALIDATION_SUMMARY.md",
+    "skills_registry": ".agile-v/SKILLS_REGISTRY.md",
+    "checkpoints": ".agile-v/CHECKPOINTS.md",
+    "trace_log": ".agile-v/TRACE_LOG.md",
+    "backlog": ".agile-v/BACKLOG.md",
+    "build_manifest": ".agile-v/BUILD_MANIFEST.md",
+    "atm": ".agile-v/ATM.md",
+    "policy": ".agile-v/POLICY.yaml",
+    "playbook": ".agile-v/PLAYBOOK.md"
+  },
+  "git_baseline": {
+    "head": "148a49f",
+    "branch": "main",
+    "last_verified": "2026-07-24T10:16:00Z",
+    "working_tree": "clean"
+  },
+  "roadmap": {
+    "phase_1": "COMPLETE — Bluedoor + discover + stats + notifications + timeline",
+    "phase_2": "COMPLETE code + Coolify VPS (redis/AI/ARQ)",
+    "phase_3": "COMPLETE — BL-0011",
+    "ui_polish": "COMPLETE — UI-2026-06-30c @ 148a49f",
+    "next": "Gate 1 | E2E CI | n8n | optional Hetzner app migrate",
+    "plan_doc": "docs/PROJECT_PLAN.md",
+    "stack_doc": "docs/JOBIFY_TECH_STACK_ANALYSIS.md",
+    "walkthrough_doc": "docs/PROJECT_WALKTHROUGH.md"
+  }
+}

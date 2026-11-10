@@ -1,0 +1,110 @@
+'use client';
+
+/**
+ * DiscoverResults — TanStack Query-driven infinite results grid for /discover.
+ *
+ * Reads filter state from URL search params and calls searchPostingsAction.
+ * Uses useInfiniteQuery so "Load More" appends next pages without pagination flash.
+ * Discover queries are NOT persisted to localStorage.
+ *
+ * Skeleton only on cold cache (useQueryBodyLoading) — SSR HydrationBoundary skips spinner.
+ */
+
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { buildDiscoverQueryOptions } from '@/lib/discover/query-options';
+import { DiscoverJobCard } from './discover-job-card';
+import { Button } from '@/components/ui/button';
+import { SearchX, Loader2 } from 'lucide-react';
+import { useQueryBodyLoading } from '@/lib/query-body-loading';
+import { useIsRouteFallback } from '@/components/providers/route-fallback-provider';
+import { useDiscoverSearchParams } from '@/hooks/useDiscoverSearchParams';
+
+export function DiscoverResults() {
+  const { q, country, workplaceType, employmentType, salaryExists } = useDiscoverSearchParams();
+
+  const queryOptions = buildDiscoverQueryOptions(
+    q,
+    country,
+    workplaceType,
+    employmentType,
+    salaryExists,
+  );
+  const isRouteFallback = useIsRouteFallback();
+
+  const {
+    data,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    isError,
+  } = useInfiniteQuery({ ...queryOptions, enabled: !isRouteFallback });
+
+  const jobs = data?.pages.flatMap((page) => page.data) ?? [];
+  const total = data?.pages[0]?.meta.total ?? 0;
+  const totalLabel = `Showing ${jobs.length.toLocaleString()} of ${total.toLocaleString()} jobs`;
+
+  const bodyLoading = useQueryBodyLoading(
+    queryOptions.queryKey,
+    isFetching && jobs.length === 0,
+  );
+
+  if (bodyLoading) {
+    return (
+      <div className="flex justify-center py-16" aria-busy="true" aria-label="Loading jobs">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-16 text-center text-muted-foreground">
+        <SearchX className="h-10 w-10 opacity-40" />
+        <p className="text-sm">Failed to load results. Check your connection and try again.</p>
+      </div>
+    );
+  }
+
+  if (jobs.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-16 text-center text-muted-foreground">
+        <SearchX className="h-10 w-10 opacity-40" />
+        <p className="text-sm">No jobs found. Try adjusting your filters.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span>{totalLabel}</span>
+        {isFetching && !isFetchingNextPage && (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {jobs.map((job) => (
+          <DiscoverJobCard key={job.id} job={job} />
+        ))}
+      </div>
+
+      {hasNextPage && !isRouteFallback && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={() => void fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="gap-2"
+          >
+            {isFetchingNextPage ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : null}
+            {isFetchingNextPage ? 'Loading…' : 'Load More'}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

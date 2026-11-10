@@ -1,0 +1,114 @@
+'use client';
+
+import { signOut } from 'next-auth/react';
+import { IntentLink, LinkPendingIcon } from '@/components/layout/intent-link';
+import { useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Settings, LogOut } from 'lucide-react';
+import { SafeImage } from '@/components/ui/safe-image';
+import { resolveAvatarUrl } from '@/lib/auth/avatar-url';
+import { useNavUserSession } from '@/hooks/useNavUserSession';
+import { scheduleGoodbyeAfterRedirect } from '@/lib/notifications/app-toast';
+import { cn } from '@/lib/utils';
+
+/**
+ * Navbar profile menu — SSR snapshot + NextAuth useSession merge via useNavUserSession.
+ * Avatar button always mounted (stable DOM); pulse overlay only on true cold load.
+ */
+export default function UserProfileDropdown() {
+  const { effectiveUser, displayName, email, avatarLoading } =
+    useNavUserSession();
+  const [avatarError, setAvatarError] = useState(false);
+
+  const avatarUrl = effectiveUser
+    ? resolveAvatarUrl({
+        imageUrl: effectiveUser.imageUrl,
+        name: displayName,
+        email,
+        hasImage: effectiveUser.hasImage,
+        avatarError,
+      })
+    : '';
+
+  const handleSignOut = async () => {
+    scheduleGoodbyeAfterRedirect(displayName);
+    try {
+      await signOut({ callbackUrl: '/' });
+    } catch {
+      // Full reload fallback — guarantees session-bound client state is dropped if signOut fails
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign('/');
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="relative h-9 w-9 rounded-full p-0"
+          disabled={avatarLoading}
+          aria-label="Account menu"
+        >
+          <div className="relative h-9 w-9 overflow-hidden rounded-full ring-2 ring-primary/40 shadow-[0_0_14px_rgba(59,130,246,0.45)]">
+            {avatarUrl ? (
+              <SafeImage
+                src={avatarUrl}
+                alt={displayName}
+                width={36}
+                height={36}
+                className="h-full w-full object-cover"
+                onError={() => setAvatarError(true)}
+              />
+            ) : (
+              <div
+                className={cn(
+                  'h-full w-full bg-muted/60',
+                  avatarLoading && 'animate-pulse'
+                )}
+                aria-hidden
+              />
+            )}
+            {avatarLoading ? (
+              <span
+                className="absolute inset-0 rounded-full bg-muted/80 animate-pulse"
+                aria-hidden
+              />
+            ) : null}
+          </div>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 backdrop-blur-sm">
+        <DropdownMenuLabel>
+          <p className="font-medium">{displayName}</p>
+          <p className="text-xs text-muted-foreground">{email}</p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <IntentLink href="/profile" className="flex cursor-pointer items-center">
+            <span className="mr-2 flex">
+              <LinkPendingIcon icon={<Settings className="h-4 w-4" />} />
+            </span>
+            Manage account
+          </IntentLink>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign out
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          Secured by NextAuth
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

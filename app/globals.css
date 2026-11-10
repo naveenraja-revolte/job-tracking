@@ -1,0 +1,307 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+
+    /* Glass surface tokens — full colors (not HSL parts); consumed via tailwind `glass-*` colors */
+    --glass-border: rgb(15 23 42 / 0.1);
+    --glass-border-strong: rgb(15 23 42 / 0.18);
+    --glass-fill: rgb(15 23 42 / 0.04);
+    --glass-hover: rgb(15 23 42 / 0.06);
+    --glass-from: rgb(255 255 255 / 0.85);
+    --glass-via: rgb(255 255 255 / 0.6);
+    --glass-nav-shadow: rgb(15 23 42 / 0.08);
+    --accent-text: #0369a1;
+    --app-glow-a: rgb(59 130 246 / 0.1);
+    --app-glow-b: rgb(236 72 153 / 0.08);
+    --app-overlay: rgb(255 255 255 / 0.05);
+    --on-glass: #1e293b;
+    --on-glass-muted: #475569;
+    --glass-inset-soft: rgb(15 23 42 / 0.03);
+    --glass-inset: rgb(15 23 42 / 0.04);
+    --glass-inset-strong: rgb(15 23 42 / 0.06);
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+
+    /* Dark values mirror the original hardcoded white-alpha classes — dark UI unchanged */
+    --glass-border: rgb(255 255 255 / 0.1);
+    --glass-border-strong: rgb(255 255 255 / 0.2);
+    --glass-fill: rgb(255 255 255 / 0.05);
+    --glass-hover: rgb(255 255 255 / 0.1);
+    --glass-from: rgb(255 255 255 / 0.1);
+    --glass-via: rgb(255 255 255 / 0.05);
+    --glass-nav-shadow: rgb(15 23 42 / 0.25);
+    --accent-text: #7dd3fc;
+    --app-glow-a: rgb(59 130 246 / 0.15);
+    --app-glow-b: rgb(236 72 153 / 0.12);
+    --app-overlay: rgb(255 255 255 / 0.05);
+    --on-glass: rgb(255 255 255 / 0.9);
+    --on-glass-muted: rgb(255 255 255 / 0.7);
+    --glass-inset-soft: rgb(0 0 0 / 0.1);
+    --glass-inset: rgb(0 0 0 / 0.2);
+    --glass-inset-strong: rgb(0 0 0 / 0.3);
+  }
+}
+
+/* Tone text: readable 700 shade on light surfaces, original 300 shade in dark */
+@layer utilities {
+  .text-tone-sky {
+    @apply text-sky-700 dark:text-sky-300;
+  }
+  .text-tone-emerald {
+    @apply text-emerald-700 dark:text-emerald-300;
+  }
+  .text-tone-amber {
+    @apply text-amber-700 dark:text-amber-300;
+  }
+  .text-tone-violet {
+    @apply text-violet-700 dark:text-violet-300;
+  }
+  .text-tone-indigo {
+    @apply text-indigo-700 dark:text-indigo-300;
+  }
+  .text-tone-rose {
+    @apply text-rose-700 dark:text-rose-300;
+  }
+
+  /* Ink text: replaces bare *-400 status/icon colors (600 on light, original 400 in dark) */
+  .text-ink-sky {
+    @apply text-sky-600 dark:text-sky-400;
+  }
+  .text-ink-emerald {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+  .text-ink-amber {
+    @apply text-amber-600 dark:text-amber-400;
+  }
+  .text-ink-violet {
+    @apply text-violet-600 dark:text-violet-400;
+  }
+  .text-ink-indigo {
+    @apply text-indigo-600 dark:text-indigo-400;
+  }
+  .text-ink-rose {
+    @apply text-rose-600 dark:text-rose-400;
+  }
+  .text-ink-red {
+    @apply text-red-600 dark:text-red-400;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* App shell — radial gradient background (UI_STYLING_GUIDE) */
+.app-shell {
+  @apply relative min-h-screen overflow-hidden;
+  background: radial-gradient(
+      circle at top,
+      var(--app-glow-a),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at bottom,
+      var(--app-glow-b),
+      transparent 65%
+    );
+}
+
+.app-shell-overlay {
+  @apply pointer-events-none absolute inset-0;
+  background: radial-gradient(
+    circle at center,
+    var(--app-overlay),
+    transparent 60%
+  );
+}
+
+.glass-nav {
+  @apply border-b border-glass-border bg-background/85 backdrop-blur-2xl shadow-[0_10px_30px_var(--glass-nav-shadow)];
+}
+
+.glass-sidebar {
+  @apply border-r border-glass-border bg-background/80 backdrop-blur-xl;
+}
+
+/* Ripple click effect (RIPPLE_BUTTON_EFFECT.md) */
+.ripple-effect {
+  @apply pointer-events-none absolute rounded-full bg-white/30;
+  transform: scale(0);
+  animation: ripple-expand 600ms ease-out forwards;
+}
+
+@keyframes ripple-expand {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* CTA shine sweep */
+.cta-shine-wrap {
+  @apply relative inline-block overflow-hidden rounded-full;
+}
+
+.cta-shine-wrap::after {
+  content: '';
+  @apply pointer-events-none absolute inset-y-0 left-0 w-[45%];
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 20%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0.08) 80%,
+    transparent 100%
+  );
+  animation: cta-shine 4.5s cubic-bezier(0.35, 0, 0.15, 1) infinite;
+}
+
+/* Offset hero CTAs so shines sweep at different times */
+.cta-shine-wrap--delay-a::after {
+  animation-delay: 0s;
+}
+
+.cta-shine-wrap--delay-b::after {
+  animation-delay: 2.25s;
+}
+
+.cta-shine-button {
+  @apply relative z-10;
+}
+
+@keyframes cta-shine {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(320%);
+  }
+}
+
+/* Removed glass-btn-primary — use Button default variant instead */
+
+.glass-input {
+  @apply bg-glass-fill backdrop-blur-sm border border-glass-border-strong placeholder:text-muted-foreground focus-visible:border-sky-400 focus-visible:ring-sky-500/50 shadow-[0_12px_40px_rgba(2,132,199,0.15)];
+}
+
+/*
+ * Overlay scrollbar — stable gutter prevents layout shift when scroll appears/disappears
+ * (filters, login, modal lock). Track stays transparent; thumb on hover/scroll only.
+ */
+html {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+body {
+  scrollbar-gutter: stable;
+}
+
+/*
+ * react-remove-scroll (AlertDialog, Select) adds padding-right on lock.
+ * With scrollbar-gutter: stable above, that double-compensates and shifts layout.
+ */
+html[data-scroll-locked],
+body[data-scroll-locked] {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}
+
+html:hover {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+}
+
+html.is-scrolling {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
+
+html::-webkit-scrollbar,
+.overlay-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+
+html::-webkit-scrollbar-track,
+.overlay-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb,
+.overlay-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+html:hover::-webkit-scrollbar-thumb,
+.overlay-scroll:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+}
+
+html.is-scrolling::-webkit-scrollbar-thumb,
+.overlay-scroll.is-scrolling::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+}
+
+.overlay-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.overlay-scroll:hover {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+}
+
+.overlay-scroll.is-scrolling {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}

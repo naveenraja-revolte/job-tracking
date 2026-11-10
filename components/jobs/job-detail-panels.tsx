@@ -1,0 +1,86 @@
+'use client';
+
+import { useState } from 'react';
+import { Sparkles, Activity, BookOpen } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { AiInsightsPanel } from '@/components/jobs/ai-insights-panel';
+import { PostingActivityTab } from '@/components/jobs/posting-activity-tab';
+import { SkillGapTab } from '@/components/jobs/skill-gap-tab';
+import type { PipelineJobInput } from '@/lib/ai/pipeline-client';
+
+type Tab = 'ai' | 'activity' | 'skillgap';
+
+type JobDetailPanelsProps = {
+  job: PipelineJobInput;
+  /** Linked catalog posting — null when the job is not linked */
+  postingId: string | null;
+};
+
+/**
+ * Tab panel rendered below EditJobForm in /dashboard/[id].
+ * Tabs: AI Insights (always) | Posting Activity (linked jobs only) | Skill Gap (always)
+ */
+export function JobDetailPanels({ job, postingId }: JobDetailPanelsProps) {
+  const [active, setActive] = useState<Tab>('ai');
+
+  const tabs: { key: Tab; label: string; icon: React.ReactNode; disabled?: boolean }[] = [
+    {
+      key: 'ai',
+      label: 'AI Insights',
+      icon: <Sparkles className="h-3.5 w-3.5" />,
+    },
+    {
+      key: 'skillgap',
+      label: 'Skill Gap',
+      icon: <BookOpen className="h-3.5 w-3.5" />,
+    },
+    {
+      key: 'activity',
+      label: 'Posting Activity',
+      icon: <Activity className="h-3.5 w-3.5" />,
+      disabled: !postingId,
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-0 rounded-xl border border-border/30 bg-glass-inset-soft overflow-hidden">
+      {/* Tab bar */}
+      <div className="flex border-b border-border/30 bg-glass-inset-soft">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            disabled={tab.disabled}
+            onClick={() => setActive(tab.key)}
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors select-none',
+              'border-b-2 -mb-px',
+              active === tab.key
+                ? 'border-primary text-primary bg-primary/5'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-glass-fill',
+              tab.disabled && 'opacity-30 cursor-not-allowed pointer-events-none'
+            )}
+            title={tab.disabled ? 'Only available for jobs linked to a posting' : undefined}
+          >
+            {tab.icon}
+            {tab.label}
+            {tab.disabled && (
+              <span className="ml-1 rounded-full bg-muted/30 px-1.5 py-0.5 text-[10px] font-normal leading-none">
+                Not linked
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Panel content */}
+      <div className="p-4">
+        {active === 'ai' && <AiInsightsPanel job={job} />}
+        {active === 'skillgap' && <SkillGapTab jobId={job.job_id} />}
+        {active === 'activity' && postingId && (
+          <PostingActivityTab postingId={postingId} />
+        )}
+      </div>
+    </div>
+  );
+}
