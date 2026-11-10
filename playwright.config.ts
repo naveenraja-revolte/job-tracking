@@ -23,7 +23,7 @@ export default defineConfig({
     baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
-    video: 'off',
+    video: process.env.QA_VIDEO === '1' ? { mode: 'on', size: { width: 1280, height: 720 } } : 'off',
   },
   projects: [
     // Signs in the seeded demo account once; authed specs reuse tests/e2e/.auth/user.json
