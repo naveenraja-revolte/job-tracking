@@ -1,4 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+const baseURL = process.env.BASE_URL;
+test.use({ baseURL });
 
 /**
  * Auth smoke tests — verify NextAuth route protection.
@@ -24,6 +27,47 @@ for (const route of PROTECTED_ROUTES) {
     await expect(page).toHaveURL(/\/sign-in/, { timeout: 8_000 });
   });
 }
+
+function trackCredentialSubmissions(page: Page) {
+  const submissions: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/auth/callback/credentials') {
+      submissions.push(request.method());
+    }
+  });
+  return submissions;
+}
+
+test('email is required and prevents credential submission', async ({ page }) => {
+  const submissions = trackCredentialSubmissions(page);
+  await page.goto('/sign-in');
+  await page.getByLabel('Password').fill('validation-only');
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await expect(page.getByLabel('Email')).toBeInvalid();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  expect(submissions).toEqual([]);
+});
+
+test('password is required and prevents credential submission', async ({ page }) => {
+  const submissions = trackCredentialSubmissions(page);
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill('validation@example.test');
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await expect(page.getByLabel('Password')).toBeInvalid();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  expect(submissions).toEqual([]);
+});
+
+test('malformed email is rejected without credential submission', async ({ page }) => {
+  const submissions = trackCredentialSubmissions(page);
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill('not-an-email');
+  await page.getByLabel('Password').fill('validation-only');
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await expect(page.getByLabel('Email')).toBeInvalid();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  expect(submissions).toEqual([]);
+});
 
 test('root / loads without 500', async ({ page }) => {
   const res = await page.goto('/', { waitUntil: 'domcontentloaded' });
